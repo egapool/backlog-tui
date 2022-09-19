@@ -21,12 +21,16 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .iter()
         .map(|issue| {
-            let summary = vec![Spans::from(vec![
+            let mut line = vec![
                 Span::from(issue.issue_key.clone()),
                 Span::from(": "),
                 Span::from(issue.summary.clone()),
-            ])];
-            ListItem::new(summary).style(Style::default())
+            ];
+            match &issue.assignee {
+                Some(i) => line.push(Span::from(format!(" ({})", i.name.clone()))),
+                None => {}
+            }
+            ListItem::new(Spans::from(line)).style(Style::default())
         })
         .collect();
 

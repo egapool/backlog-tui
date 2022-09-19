@@ -55,6 +55,12 @@ pub struct Issue {
     pub issue_key: String,
     pub summary: String,
     pub description: String,
+    pub assignee: Option<Assignee>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Assignee {
+    pub name: String,
 }
 
 pub struct App {
