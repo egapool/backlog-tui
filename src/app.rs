@@ -62,7 +62,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn with_items(items: Vec<Issue>) -> App {
+    pub async fn init() -> Result<App, Box<dyn std::error::Error>> {
+        let issues = fetch_issues().await?;
+        Ok(App::with_items(issues))
+    }
+
+    fn with_items(items: Vec<Issue>) -> App {
         App {
             items: StatefulList::with_items(items),
         }

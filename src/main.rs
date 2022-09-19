@@ -17,9 +17,6 @@ use crate::app::App;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    // Fetch Contents
-    let issues = app::fetch_issues().await?;
-
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -27,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let app = App::with_items(issues);
+    let app = App::init().await?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal
