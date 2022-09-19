@@ -42,6 +42,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         if let Event::Key(key) = event::read()? {
             match key.code {
                 KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('o') => app.open_browser(),
                 KeyCode::Left => app.items.unselect(),
                 KeyCode::Char('j') => app.items.next(),
                 KeyCode::Char('k') => app.items.previous(),

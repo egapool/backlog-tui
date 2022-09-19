@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::process::Command;
 use tui::widgets::ListState;
 
 pub struct StatefulList<T> {
@@ -65,18 +66,41 @@ pub struct Assignee {
 
 pub struct App {
     pub items: StatefulList<Issue>,
+    base_url: String,
 }
 
 impl App {
     pub async fn init() -> Result<App, Box<dyn std::error::Error>> {
         let issues = fetch_issues().await?;
-        Ok(App::with_items(issues))
+        let backlog_space_id = env::var("BACKLOG_SPACE_ID")?;
+        let app = App {
+            items: StatefulList::with_items(issues),
+            base_url: format!("https://{}.backlog.com", backlog_space_id),
+        };
+        Ok(app)
     }
 
-    fn with_items(items: Vec<Issue>) -> App {
-        App {
-            items: StatefulList::with_items(items),
+    pub fn get_selected_issue(&self) -> Option<&Issue> {
+        match self.items.state.selected() {
+            Some(i) => Some(&self.items.items[i]),
+            None => None,
         }
+    }
+
+    pub fn open_browser(&self) {
+        let selected = self.get_selected_issue();
+        match selected {
+            Some(i) => {
+                let url = format!("{}/view/{}", self.base_url, i.issue_key);
+                if Command::new("sh")
+                    .arg("-c")
+                    .arg(format!("open {}", url))
+                    .output()
+                    .is_ok()
+                {}
+            }
+            None => (),
+        };
     }
 }
 

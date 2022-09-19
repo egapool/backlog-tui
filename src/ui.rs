@@ -49,9 +49,8 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     f.render_stateful_widget(items, chunks[0], &mut app.items.state);
 
     // Right Column
-    let selected = app.items.state.selected();
-    let text = match selected {
-        Some(i) => &app.items.items[i].description,
+    let text = match app.get_selected_issue() {
+        Some(i) => &i.description,
         None => "",
     };
 
