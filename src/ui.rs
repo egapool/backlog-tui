@@ -26,34 +26,26 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .iter()
         .map(|issue| {
+            let status_color = hex_to_rgb_color(&issue.status.color);
             let mut lines: Vec<Spans> = vec![];
             let mut line = vec![
-                Span::styled(
-                    issue.issue_key.clone(),
-                    Style::default().fg(Color::Rgb(200, 200, 200)),
-                ),
-                Span::from(": "),
-                Span::styled(
-                    issue.status.name.clone(),
-                    Style::default().fg(Color::Rgb(200, 200, 200)),
-                ),
-                Span::from(" "),
-                Span::styled(
-                    issue.summary.clone(),
-                    Style::default().fg(Color::Rgb(200, 200, 200)),
-                ),
+                Span::styled(issue.issue_key.clone(), Style::default().fg(status_color)),
+                Span::styled(" ", Style::default()),
+                Span::styled(issue.status.name.clone(), Style::default().fg(status_color)),
+                Span::styled(" ", Style::default()),
+                Span::styled(issue.summary.clone(), Style::default().fg(status_color)),
             ];
             match &issue.assignee {
                 Some(i) => line.push(Span::styled(
                     format!(" @{}", i.name.clone()),
-                    Style::default().fg(Color::Rgb(200, 200, 200)),
+                    Style::default().fg(status_color),
                 )),
                 None => {}
             }
-            line.push(Span::from(" "));
+            line.push(Span::styled(" ", Style::default()));
             line.push(Span::styled(
                 issue.updated.clone(),
-                Style::default().fg(Color::Rgb(120, 120, 120)),
+                Style::default().fg(status_color),
             ));
             lines.push(Spans::from(line));
             ListItem::new(lines).style(Style::default())
@@ -100,4 +92,12 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .alignment(Alignment::Left);
     // .wrap(Wrap { trim: true });
     f.render_widget(paragraph, chunks[1]);
+}
+
+fn hex_to_rgb_color(hex: &str) -> Color {
+    let rgb = (1..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect::<Vec<u8>>();
+    Color::Rgb(rgb[0], rgb[1], rgb[2])
 }
