@@ -1,3 +1,4 @@
+use crate::client::BacklogClient;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::process::Command;
@@ -20,7 +21,7 @@ impl<T> StatefulList<T> {
         let i = match self.state.selected() {
             Some(i) => {
                 if i >= self.items.len() - 1 {
-                    0
+                    i
                 } else {
                     i + 1
                 }
@@ -34,7 +35,7 @@ impl<T> StatefulList<T> {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.items.len() - 1
+                    0
                 } else {
                     i - 1
                 }
@@ -56,26 +57,54 @@ pub struct Issue {
     pub issue_key: String,
     pub summary: String,
     pub description: String,
-    pub assignee: Option<Assignee>,
+    pub assignee: Option<User>,
+    pub updated: String,
+    pub status: Status,
+    #[serde(skip_deserializing)]
+    pub comments: Option<Vec<Comment>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub content: Option<String>,
+    pub created_user: User,
+    pub created: String,
+    pub updated: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct User {
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Assignee {
+pub struct Status {
+    pub id: u32,
     pub name: String,
+    pub color: String,
 }
 
 pub struct App {
     pub items: StatefulList<Issue>,
     base_url: String,
+    client: BacklogClient,
+    pub is_vertical: bool,
 }
 
 impl App {
     pub async fn init() -> Result<App, Box<dyn std::error::Error>> {
-        let issues = fetch_issues().await?;
+        let backlog_space_id = env::var("BACKLOG_SPACE_ID")?;
+        let backlog_api_key = env::var("BACKLOG_API_KEY")?;
+        let client = BacklogClient::new(backlog_space_id, backlog_api_key);
+
+        let issues = client.fetch_issues().await?;
         let backlog_space_id = env::var("BACKLOG_SPACE_ID")?;
         let app = App {
             items: StatefulList::with_items(issues),
             base_url: format!("https://{}.backlog.com", backlog_space_id),
+            client,
+            is_vertical: false,
         };
         Ok(app)
     }
@@ -102,28 +131,24 @@ impl App {
             None => (),
         };
     }
-}
 
-pub async fn fetch_issues() -> Result<Vec<Issue>, Box<dyn std::error::Error>> {
-    let backlog_space_id = env::var("BACKLOG_SPACE_ID")?;
-    let backlog_api_key = env::var("BACKLOG_API_KEY")?;
+    pub async fn on_down(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // カーソルを1行に下に移動
+        self.items.next();
 
-    let url = format!("https://{}.backlog.com/api/v2/issues", backlog_space_id);
-
-    let client = reqwest::Client::new();
-    let response = client
-        .get(url)
-        .query(&[
-            ("projectId[]", "156939"),
-            ("apiKey", &backlog_api_key),
-            ("count", "100"),
-        ])
-        .send()
-        .await?;
-
-    // TODO response.status()の中身でエラーハンドリング
-
-    let issues = response.json::<Vec<Issue>>().await?;
-
-    Ok(issues)
+        // 該当issueのコメントを取得
+        let issue = match self.items.state.selected() {
+            Some(i) => Some(&mut self.items.items[i]),
+            None => None,
+        };
+        if let Some(i) = issue {
+            if i.comments.is_none() {
+                let comments = self.client.fetch_comments(i).await;
+                if let Ok(cs) = comments {
+                    i.comments = Some(cs);
+                }
+            }
+        }
+        Ok(())
+    }
 }

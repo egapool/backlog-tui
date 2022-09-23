@@ -1,4 +1,5 @@
 mod app;
+mod client;
 mod crossterm;
 mod ui;
 
